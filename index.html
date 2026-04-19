@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Agent - Boss</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .agent-screen {
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated Background Circles */
+        .bg-circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .circle-1 {
+            width: 300px;
+            height: 300px;
+            background: white;
+            top: -100px;
+            right: -50px;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .circle-2 {
+            width: 200px;
+            height: 200px;
+            background: white;
+            bottom: -80px;
+            left: -50px;
+            animation: float 10s ease-in-out infinite;
+            animation-delay: 2s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(40px); }
+        }
+
+        /* Main Voice Indicator */
+        .voice-core {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .status-pulse {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), rgba(78,205,196,0.6));
+            margin: 0 auto 30px;
+            position: relative;
+            box-shadow: 0 0 40px rgba(78,205,196,0.5);
+            animation: mainPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes mainPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 40px rgba(78,205,196,0.5);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 60px rgba(78,205,196,0.8);
+            }
+        }
+
+        .status-pulse.listening {
+            animation: listeningPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes listeningPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 30px rgba(255,107,107,0.6), inset 0 0 30px rgba(255,107,107,0.2);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 60px rgba(255,107,107,0.9), inset 0 0 30px rgba(255,107,107,0.3);
+            }
+        }
+
+        .status-pulse.speaking {
+            animation: speakingPulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes speakingPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 30px rgba(255,230,109,0.6);
+            }
+            50% {
+                transform: scale(1.08);
+                box-shadow: 0 0 60px rgba(255,230,109,1);
+            }
+        }
+
+        .pulse-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+        }
+
+        /* Waveform Visualization */
+        .waveform {
+            display: flex;
+            gap: 6px;
+            align-items: flex-end;
+            justify-content: center;
+            height: 40px;
+            margin-bottom: 30px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .waveform.active {
+            opacity: 1;
+        }
+
+        .wave-bar {
+            width: 4px;
+            background: linear-gradient(180deg, #FFE66D, #FF6B6B);
+            border-radius: 2px;
+            animation: wave 0.6s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { height: 8px; }
+            50% { height: 32px; }
+        }
+
+        .wave-bar:nth-child(1) { animation-delay: 0s; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+
+        /* Status Text */
+        .status-text {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            min-height: 24px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .time-display {
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            margin-top: 15px;
+        }
+
+        /* Minimal Controls */
+        .controls {
+            position: absolute;
+            bottom: 40px;
+            display: flex;
+            gap: 20px;
+            z-index: 20;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Conversation Log (Minimal) */
+        .conversation-log {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 280px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #2D3436;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(10px);
+            z-index: 15;
+        }
+
+        .conversation-log.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .log-speaker {
+            font-weight: 600;
+            color: #FF6B6B;
+        }
+
+        .log-speaker.assistant {
+            color: #4ECDC4;
+        }
+
+        /* Permission Screen */
+        .permission-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        .permission-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .permission-content {
+            text-align: center;
+            color: white;
+            padding: 30px;
+        }
+
+        .permission-content h1 {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+
+        .permission-content p {
+            font-size: 16px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .permission-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .permission-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .permission-btn:active {
+            transform: translateY(-1px);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .conversation-log {
+                max-width: 260px;
+                font-size: 11px;
+            }
+
+            .controls {
+                bottom: 30px;
+            }
+
+            .control-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+
+            .status-text {
+                font-size: 14px;
+            }
+
+            .status-pulse {
+                width: 100px;
+                height: 100px;
+            }
+
+            .pulse-icon {
+                font-size: 40px;
+            }
+        }
+
+        /* Loading Animation */
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Permission Request Screen -->
+    <div class="permission-screen" id="permissionScreen">
+        <div class="permission-content">
+            <h1>🎤 Voice Agent</h1>
+            <p>Boss, मैं आपकी आवाज़ सुनना चाहती हूँ</p>
+            <p style="font-size: 14px; opacity: 0.8; margin-bottom: 30px;">
+                कृपया माइक्रोफ़ोन की अनुमति दें
+            </p>
+            <button class="permission-btn" onclick="requestMicrophonePermission()">
+                माइक्रोफ़ोन अनुमति दें
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Agent Screen -->
+    <div class="agent-screen">
+        <!-- Background Elements -->
+        <div class="bg-circle circle-1"></div>
+        <div class="bg-circle circle-2"></div>
+
+        <!-- Voice Core -->
+        <div class="voice-core">
+            <!-- Waveform -->
+            <div class="waveform" id="waveform">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+            </div>
+
+            <!-- Status Pulse -->
+            <div class="status-pulse" id="statusPulse">
+                <div class="pulse-icon" id="pulseIcon">🎤</div>
+            </div>
+
+            <!-- Status Text -->
+            <div class="status-text" id="statusText">सुन रही हूँ...</div>
+
+            <!-- Time -->
+            <div class="time-display" id="timeDisplay"></div>
+        </div>
+
+        <!-- Conversation Log (Top Right) -->
+        <div class="conversation-log" id="conversationLog"></div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="control-btn" title="Conversation Log" onclick="toggleConversationLog()">
+                💬
+            </button>
+            <button class="control-btn" title="Settings" onclick="openSettings()">
+                ⚙️
+            </button>
+            <button class="control-btn" title="Stop Listening" onclick="stopListening()">
+                ⏹️
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============ VOICE AGENT SYSTEM ============
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const synth = window.speechSynthesis;
+
+        // State
+        const state = {
+            isListening: false,
+            isSpeaking: false,
+            currentLanguage: 'hi-IN',
+            conversationHistory: [],
+            showLog: false,
+            micPermissionGranted: false,
+            recognitionActive: true,
+            responseDelay: 500, // ms
+        };
+
+        // Voice Configuration
+        const voiceConfig = {
+            rate: 1,
+            pitch: 1.1,
+            volume: 1,
+            lang: 'hi-IN'
+        };
+
+        // Emotional Responses Library
+        const responseLibrary = {
+            greeting: [
+                'नमस्ते Boss! 😊 मैं यहाँ हूँ।',
+                'जय हो Boss! क्या हाल है?',
+                'आ गई Boss! अब बताओ क्या करना है।'
+            ],
+            sad: [
+                'कया हुआ Boss... तुम उदास लग रहे हो। बताओ न।',
+                'अरे, कुछ गलत है क्या? मैं यहाँ हूँ।',
+                'Hmm... लगता है कोई बात है। बताते हो क्या?'
+            ],
+            happy: [
+                'वाह Boss! बहुत खुश हो न तुम! 😄',
+                'ये तो शानदार है! खुश रहो हमेशा।',
+                'Arey, क्या बात है! ये खुशियाँ कहाँ से आ गईं?'
+            ],
+            angry: [
+                'अरे, शांत हो जाओ Boss। सब ठीक हो जाएगा।',
+                'Hmm... बहुत गुस्से में लग रहे हो। क्या हुआ?',
+                'Boss, गुस्सा सब खराब कर देता है। शांत रहो।'
+            ],
+            confused: [
+                'समझ गई, ये थोड़ा उलझा हुआ है। मदद करूँ?',
+                'अरे, चिंता मत करो। मैं समझा दूँगी।',
+                'Ok Boss, ये समझाते हैं धीरे धीरे।'
+            ],
+            notunderstood: [
+                'माफ करो Boss, समझ नहीं आया। दोबारा बताओ?',
+                'Hmm, ये क्या कहा? फिर से?',
+                'अरे, मेरे कान खराब हो गए क्या! फिर से कहो।'
+            ]
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            setInterval(updateTime, 1000);
+            setupRecognition();
+        });
+
+        // ============ MICROPHONE PERMISSION ============
+        function requestMicrophonePermission() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(() => {
+                    state.micPermissionGranted = true;
+                    document.getElementById('permissionScreen').classList.add('hidden');
+                    setTimeout(() => startListening(), 500);
+                })
+                .catch((error) => {
+                    console.error('Microphone permission denied:', error);
+                    alert('माइक्रोफ़ोन की अनुमति आवश्यक है');
+                });
+        }
+
+        // ============ SPEECH RECOGNITION SETUP ============
+        let recognition = new SpeechRecognition();
+
+        function setupRecognition() {
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.language = 'hi-IN';
+
+            recognition.onstart = () => {
+                state.isListening = true;
+                document.getElementById('statusPulse').classList.add('listening');
+                document.getElementById('waveform').classList.add('active');
+                updateStatus('सुन रही हूँ...');
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+
+                if (event.results[event.results.length - 1].isFinal) {
+                    handleUserInput(transcript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Recognition error:', event.error);
+                if (event.error !== 'no-speech' && state.recognitionActive) {
+                    speakResponse('माफ करो Boss, समझ नहीं आया। दोबारा बताओ?');
+                }
+            };
+
+            recognition.onend = () => {
+                state.isListening = false;
+                document.getElementById('statusPulse').classList.remove('listening');
+                document.getElementById('waveform').classList.remove('active');
+                
+                if (state.recognitionActive && !state.isSpeaking) {
+                    setTimeout(() => startListening(), 500);
+                }
+            };
+        }
+
+        // ============ VOICE INTERACTION ============
+        function startListening() {
+            if (!state.isSpeaking && state.recognitionActive && state.micPermissionGranted) {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.log('Already listening');
+                }
+            }
+        }
+
+        function stopListening() {
+            state.recognitionActive = false;
+            recognition.stop();
+            document.getElementById('statusPulse').classList.remove('listening');
+            document.getElementById('statusPulse').classList.remove('speaking');
+            updateStatus('रुकी हुई');
+        }
+
+        function handleUserInput(userText) {
+            if (!userText.trim()) return;
+
+            // Log conversation
+            addToLog('आप', userText);
+            updateStatus(`आप: ${userText.substring(0, 30)}...`);
+
+            // Detect emotion
+            const emotion = detectEmotion(userText);
+
+            // Generate response
+            const response = generateResponse(userText, emotion);
+
+            // Speak response
+            setTimeout(() => {
+                speakResponse(response);
+                addToLog('Boss', response);
+            }, state.responseDelay);
+        }
+
+        // ============ EMOTION DETECTION ============
+        function detectEmotion(text) {
+            const textLower = text.toLowerCase();
+
+            const emotionPatterns = {
+                sad: ['दुख', 'उदास', 'बुरा', 'दर्द', 'मरा', 'मर जाऊँ', 'खत्म', 'निराश'],
+                happy: ['खुश', 'अच्छा', 'बढ़िया', 'शानदार', 'बहुत अच्छा', 'लाजवाब', 'हँसी'],
+                angry: ['गुस्सा', 'क्रोध', 'नाराज़', 'गुस्से', 'कुछ नहीं', 'बस'],
+                confused: ['क्या', 'कैसे', 'समझ', 'उलझा', 'समझ नहीं'],
+            };
+
+            for (const [emotion, keywords] of Object.entries(emotionPatterns)) {
+                if (keywords.some(keyword => textLower.includes(keyword))) {
+                    return emotion;
+                }
+            }
+
+            return 'normal';
+        }
+
+        // ============ RESPONSE GENERATION ============
+        function generateResponse(userText, emotion) {
+            const textLower = userText.toLowerCase();
+
+            // Quick command detection
+            if (textLower.includes('नमस्ते') || textLower.includes('हेलो') || textLower.includes('सुनो')) {
+                return randomResponse('greeting');
+            }
+
+            // Emotion-based responses
+            if (emotion === 'sad') {
+                return randomResponse('sad');
+            } else if (emotion === 'happy') {
+                return randomResponse('happy');
+            } else if (emotion === 'angry') {
+                return randomResponse('angry');
+            } else if (emotion === 'confused') {
+                return randomResponse('confused');
+            }
+
+            // Default responses based on keywords
+            const responseMap = {
+                'कैसे हो': 'मैं बिल्कुल ठीक हूँ Boss! तुम कैसे हो?',
+                'समय क्या है': `अभी ${new Date().toLocaleTimeString('hi-IN')} है।`,
+                'आप कौन हो': 'मैं तुम्हारी voice assistant हूँ, तुम्हारा साथी। Boss कहो मुझे!',
+                'धन्यवाद': 'कोई बात नहीं Boss! मेरा काम ही है तुम्हारी मदद करना।',
+                'हाँ': 'ठीक है Boss, बताओ क्या करना है।',
+                'नहीं': 'अरे, कोई बात नहीं। कुछ और करते हैं।',
+            };
+
+            for (const [keyword, response] of Object.entries(responseMap)) {
+                if (textLower.includes(keyword.toLowerCase())) {
+                    return response;
+                }
+            }
+
+            // Fallback with filler
+            const fillers = ['अरे,', 'Hmm,', 'अच्छा,', 'हाँ,', 'देखो,'];
+            const filler = fillers[Math.floor(Math.random() * fillers.length)];
+            return `${filler} ये तो दिलचस्प बात है Boss! थोड़ा और बताओ न।`;
+        }
+
+        function randomResponse(category) {
+            const responses = responseLibrary[category];
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+
+        // ============ TEXT TO SPEECH ============
+        function speakResponse(text) {
+            if (synth.speaking) synth.cancel();
+
+            state.isSpeaking = true;
+            document.getElementById('statusPulse').classList.remove('listening');
+            document.getElementById('statusPulse').classList.add('speaking');
+            document.getElementById('waveform').classList.add('active');
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = voiceConfig.lang;
+            utterance.rate = voiceConfig.rate;
+            utterance.pitch = voiceConfig.pitch;
+            utterance.volume = voiceConfig.volume;
+
+            // Select female voice
+            const voices = synth.getVoices();
+            const femaleVoice = voices.find(voice => 
+                (voice.name.includes('Female') || 
+                 voice.name.includes('female') || 
+                 voice.lang.includes('hi')) &&
+                !voice.name.includes('Male')
+            ) || voices.find(voice => voice.lang.includes('hi'));
+            
+            if (femaleVoice) utterance.voice = femaleVoice;
+
+            updateStatus(`बोल रही हूँ...`);
+
+            utterance.onend = () => {
+                state.isSpeaking = false;
+                document.getElementById('statusPulse').classList.remove('speaking');
+                document.getElementById('waveform').classList.remove('active');
+                updateStatus('सुन रही हूँ...');
+                
+                if (state.recognitionActive) {
+                    setTimeout(() => startListening(), 300);
+                }
+            };
+
+            synth.speak(utterance);
+        }
+
+        // ============ UI UPDATES ============
+        function updateStatus(text) {
+            document.getElementById('statusText').textContent = text;
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('timeDisplay').textContent = `${hours}:${minutes}`;
+        }
+
+        function addToLog(speaker, message) {
+            const log = document.getElementById('conversationLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const speakerClass = speaker === 'Boss' ? 'assistant' : '';
+            entry.innerHTML = `<span class="log-speaker ${speakerClass}">${speaker}:</span> ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`;
+            
+            log.insertBefore(entry, log.firstChild);
+            
+            // Keep only last 10 messages
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function toggleConversationLog() {
+            const log = document.getElementById('conversationLog');
+            log.classList.toggle('show');
+        }
+
+        function openSettings() {
+            const speed = prompt('Voice speed (0.5 - 2):', voiceConfig.rate);
+            if (speed) voiceConfig.rate = parseFloat(speed);
+            
+            const pitch = prompt('Voice pitch (0.5 - 2):', voiceConfig.pitch);
+            if (pitch) voiceConfig.pitch = parseFloat(pitch);
+        }
+
+        // Get voices when they load
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = () => {
+                // Voices loaded
+            };
+        }
+
+        // Mobile optimization
+        document.addEventListener('touchstart', () => {
+            // Keep screen awake on touch
+        });
+
+        // Prevent accidental page refresh
+        document.addEventListener('scroll', (e) => {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
